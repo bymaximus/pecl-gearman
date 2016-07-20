@@ -2122,7 +2122,7 @@ PHP_FUNCTION(gearman_client_do_epoch) {
 		RETURN_EMPTY_STRING();
 	}
 
-	RETURN_STR(job_handle, 0);	
+	RETURN_STRING(job_handle, 0);	
 }
 /* }}} */
 
