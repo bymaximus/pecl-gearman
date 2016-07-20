@@ -2094,22 +2094,25 @@ PHP_FUNCTION(gearman_client_do_epoch) {
 	int function_name_len;
 	char *workload;
 	int workload_len;
-	int *timestamp;
+	long *timestamp;
 	char *unique = NULL;
 	int unique_len= 0;
 	char *job_handle;
 
-	GEARMAN_ZPMP(RETURN_NULL(), "ss|s", &zobj, gearman_client_ce, 
+	GEARMAN_ZPMP(RETURN_NULL(), "ssl|s", &zobj, gearman_client_ce, 
 				 &function_name, &function_name_len, 
 				 &workload, &workload_len, &timestamp, &unique, &unique_len)
 
+	time_t when = (long)timestamp;
+	
 	job_handle= emalloc(GEARMAN_JOB_HANDLE_SIZE);
 
 	obj->ret= gearman_client_do_epoch(&(obj->client), 
-									(char *)function_name, 
-									(time_t *)timestamp,
-									(char *)unique, (void *)workload, 
-									(size_t)workload_len, job_handle);
+					(char *)function_name, 
+					(time_t)when,
+					(char *)unique, (void *)workload, 
+					(size_t)workload_len, job_handle);
+					
 	if (! PHP_GEARMAN_CLIENT_RET_OK(obj->ret)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s",
 						 gearman_client_error(&(obj->client)));
