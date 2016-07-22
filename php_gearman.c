@@ -521,6 +521,15 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_oo_gearman_client_job_status_by_unique_key, 0, 0,
 	ZEND_ARG_INFO(0, unique_key)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_gearman_client_job_exists_by_unique_key, 0, 0, 2)
+	ZEND_ARG_INFO(0, client_object)
+	ZEND_ARG_INFO(0, unique_key)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_oo_gearman_client_job_exists_by_unique_key, 0, 0, 1)
+	ZEND_ARG_INFO(0, unique_key)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_gearman_client_ping, 0, 0, 2)
 	ZEND_ARG_INFO(0, client_object)
 	ZEND_ARG_INFO(0, workload)
@@ -1068,7 +1077,9 @@ zend_class_entry *gearman_exception_ce;
                                           (__ret) == GEARMAN_WORK_DATA || \
                                           (__ret) == GEARMAN_WORK_EXCEPTION || \
                                           (__ret) == GEARMAN_WORK_WARNING || \
-                                          (__ret) == GEARMAN_WORK_FAIL)
+                                          (__ret) == GEARMAN_WORK_FAIL || \
+										  (__ret) == GEARMAN_JOB_EXISTS || \
+										  (__ret) == GEARMAN_NO_JOBS)
 
 #define GEARMAN_EXCEPTION(__error, __error_code) { \
 	zend_throw_exception(gearman_exception_ce, __error, __error_code TSRMLS_CC); \
@@ -2261,6 +2272,33 @@ PHP_FUNCTION(gearman_client_job_status_by_unique_key) {
 	add_next_index_bool(return_value, gearman_status_is_running(status));
 	add_next_index_long(return_value, (long) gearman_status_numerator(status));
 	add_next_index_long(return_value, (long) gearman_status_denominator(status));
+}
+/* }}} */
+
+/* {{{ proto boolean gearman_client_job_exists_by_unique_key(object client, string unique_key)
+   Check if job exists using the unique key passed, rather than job handle. */
+PHP_FUNCTION(gearman_client_job_exists_by_unique_key) {
+	zval *zobj;
+	gearman_client_obj *obj;
+	char *unique_key;
+	int unique_key_len;
+
+	GEARMAN_ZPMP(RETURN_NULL(), "s", &zobj, gearman_client_ce,
+				 &unique_key, &unique_key_len)
+
+	gearman_return_t rc = gearman_client_job_exists_by_unique(&(obj->client), unique_key, unique_key_len);
+
+	if (rc != GEARMAN_JOB_EXISTS && rc != GEARMAN_NO_JOBS) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s",
+						 gearman_client_error(&(obj->client)));
+		RETURN_NULL();
+	}
+
+	if (rc == GEARMAN_JOB_EXISTS) {
+		RETURN_TRUE;
+	}
+
+	RETURN_FALSE;
 }
 /* }}} */
 
@@ -4068,6 +4106,7 @@ zend_function_entry gearman_functions[] = {
 	PHP_FE(gearman_client_do_low_background, arginfo_gearman_client_do_low_background)
 	PHP_FE(gearman_client_job_status, arginfo_gearman_client_job_status)
 	PHP_FE(gearman_client_job_status_by_unique_key, arginfo_gearman_client_job_status_by_unique_key)
+	PHP_FE(gearman_client_job_exists_by_unique_key, arginfo_gearman_client_job_exists_by_unique_key)
 	PHP_FE(gearman_client_ping, arginfo_gearman_client_ping)
 #if jluedke_0
 	PHP_FE(gearman_client_task_free_all, arginfo_gearman_client_task_free_all)
@@ -4230,6 +4269,7 @@ zend_function_entry gearman_client_methods[]= {
 	__PHP_ME_MAPPING(doLowBackground, gearman_client_do_low_background, arginfo_oo_gearman_client_do_low_background, 0)
 	__PHP_ME_MAPPING(jobStatus, gearman_client_job_status, arginfo_oo_gearman_client_job_status, 0)
 	__PHP_ME_MAPPING(jobStatusByUniqueKey, gearman_client_job_status_by_unique_key, arginfo_oo_gearman_client_job_status_by_unique_key, 0)
+	__PHP_ME_MAPPING(jobExistsByUniqueKey, gearman_client_job_exists_by_unique_key, arginfo_oo_gearman_client_job_exists_by_unique_key, 0)
 	__PHP_ME_MAPPING(ping, gearman_client_ping, arginfo_oo_gearman_client_ping, 0)
 #if jluedke_0
 	__PHP_ME_MAPPING(taskFreeAll, gearman_client_task_free_all, arginfo_oo_gearman_client_task_free_all, 0)
